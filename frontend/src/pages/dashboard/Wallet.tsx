@@ -243,14 +243,16 @@ const Wallet: React.FC = () => {
             variant="borderless"
             style={{ borderRadius: 16, background: 'linear-gradient(135deg, #1890ff 0%, #003580 100%)' }}
           >
-            <Statistic
-              title={<span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13 }}>Available Balance</span>}
-              value={(
-                <CountUp end={wallet?.balance ?? 0} duration={900} decimals={2} formatter={(n) => `KES ${n.toFixed(2)}`} />
-              )}
-              valueStyle={{ color: '#fff', fontSize: 38, fontWeight: 800 }}
-              loading={loading}
-            />
+            <div>
+              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13 }}>Available Balance</div>
+              <div style={{ color: '#fff', fontSize: 38, fontWeight: 800 }}>
+                {!loading ? (
+                  <CountUp end={wallet?.balance ?? 0} duration={900} decimals={2} formatter={(n) => `KES ${n.toFixed(2)}`} />
+                ) : (
+                  '—'
+                )}
+              </div>
+            </div>
             <Divider style={{ borderColor: 'rgba(255,255,255,0.2)', margin: '14px 0 10px' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>

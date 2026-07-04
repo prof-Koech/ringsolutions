@@ -1,6 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from ..extensions import db
 from ..models.subscriber import Subscriber
+from ..services import email_service
+from sqlalchemy.exc import SQLAlchemyError
 import re
 
 subscribe_bp = Blueprint('subscribe', __name__)
@@ -23,8 +25,20 @@ def subscribe():
     if existing:
         return jsonify({'message': 'Already subscribed'}), 200
 
-    sub = Subscriber(email=email, name=name)
-    db.session.add(sub)
-    db.session.commit()
+    try:
+        sub = Subscriber(email=email, name=name)
+        db.session.add(sub)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to save subscriber'}), 500
+
+    # Send a confirmation email (best-effort)
+    try:
+        frontend = current_app.config.get('FRONTEND_URL', '')
+        email_service.send_subscription_email(email, name or 'Subscriber', frontend)
+    except Exception:
+        # don't fail the request if email sending fails
+        current_app.logger.exception('Failed to send subscription email')
 
     return jsonify({'message': 'Subscribed', 'subscriber': sub.to_dict()}), 201

@@ -6,7 +6,7 @@ import {
   CheckCircleFilled, ArrowRightOutlined, GlobalOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import Logo from '../components/common/Logo';
+import Logo, { RingIcon } from '../components/common/Logo';
 import CountUp from '../components/common/CountUp';
 import api from '../services/api';
 
@@ -113,7 +113,13 @@ const Landing: React.FC = () => {
           ))}
         </div>
         <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
-          {/* Removed "Built for Africa" badge per request. */}
+          {/* Rolling ring hero graphic */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 36 }}>
+            <div className="rs-ring-hero">
+              <RingIcon size={148} />
+            </div>
+          </div>
+
           <h1 style={{
             color: '#fff',
             fontSize: 'clamp(32px, 5vw, 64px)',
@@ -319,6 +325,56 @@ const Landing: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      <style>{`
+        /*
+         * Rolling-wheel entrance for the hero ring.
+         *
+         * Physics: a wheel rolling RIGHT rotates CLOCKWISE.
+         * In CSS clockwise = positive degrees, so we go from negative → 0.
+         * translateX(-100vw) → translateX(0): ring slides right.
+         * rotate(-720deg) → rotate(0deg): ring spins clockwise (two full turns).
+         * Combined, this is exact rolling physics.
+         *
+         * After the entrance, ring-idle takes over the transform property
+         * and spins the ring slowly forever. No visual jump because both
+         * animations share rotate(0deg) at the handoff point.
+         */
+        @keyframes rs-ring-roll-in {
+          0% {
+            transform: translateX(-100vw) rotate(-720deg);
+            opacity: 0;
+            filter: drop-shadow(0 0 0px rgba(64,169,255,0));
+          }
+          20% { opacity: 1; }
+          82% {
+            transform: translateX(8px) rotate(6deg);
+            filter: drop-shadow(0 0 32px rgba(64,169,255,0.9));
+          }
+          100% {
+            transform: translateX(0) rotate(0deg);
+            opacity: 1;
+            filter: drop-shadow(0 0 22px rgba(64,169,255,0.55));
+          }
+        }
+        @keyframes rs-ring-idle {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        .rs-ring-hero {
+          animation:
+            rs-ring-roll-in 1.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards,
+            rs-ring-idle 14s linear 1.4s infinite;
+          will-change: transform;
+          display: inline-block;
+          filter: drop-shadow(0 0 22px rgba(64,169,255,0.55));
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .rs-ring-hero {
+            animation: rs-ring-idle 14s linear infinite;
+          }
+        }
+      `}</style>
     </div>
   );
 };
