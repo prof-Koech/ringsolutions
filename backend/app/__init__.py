@@ -80,4 +80,14 @@ def create_app(config_class=None):
     def health():
         return {"status": "ok", "app": "RingSolutions API"}
 
+    # Serve uploaded campaign images (WhatsApp fetches from this public URL)
+    import os
+    from flask import send_from_directory
+    from werkzeug.utils import secure_filename as _sf
+
+    @app.route("/api/uploads/<filename>")
+    def serve_upload(filename):
+        folder = app.config.get("UPLOAD_FOLDER", os.path.join(app.root_path, "..", "uploads"))
+        return send_from_directory(os.path.abspath(folder), _sf(filename))
+
     return app

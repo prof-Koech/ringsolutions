@@ -59,7 +59,11 @@ class Config:
     MINIMUM_TOPUP = float(os.getenv("MINIMUM_TOPUP", "100.00"))
 
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5000")
     APP_NAME = os.getenv("APP_NAME", "RingSolutions")
+    UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads"))
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10 MB upload limit
+    ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
     SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@ringsolutions.com")
 
     CORS_ORIGINS = [os.getenv("FRONTEND_URL", "http://localhost:5173")]

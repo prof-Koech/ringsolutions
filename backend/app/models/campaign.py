@@ -62,6 +62,8 @@ class Campaign(db.Model):
     custom_sender_id_fee = db.Column(db.Numeric(12, 2), default=0.00)
 
     # Report
+    image_url = db.Column(db.String(500))          # optional WhatsApp image/poster
+
     report_color = db.Column(db.String(7), default="#1890ff")
     report_url = db.Column(db.String(500))
     report_generated_at = db.Column(db.DateTime)
@@ -109,6 +111,7 @@ class Campaign(db.Model):
             "estimated_cost": float(self.estimated_cost),
             "actual_cost": float(self.actual_cost),
             "custom_sender_id_fee": float(self.custom_sender_id_fee),
+            "image_url": self.image_url,
             "report_color": self.report_color,
             "report_url": self.report_url,
             "contact_list_id": self.contact_list_id,

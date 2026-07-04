@@ -7,7 +7,7 @@ import {
 import {
   MessageOutlined, WhatsAppOutlined, UploadOutlined,
   SendOutlined, WalletOutlined, CalendarOutlined,
-  CheckCircleOutlined, InboxOutlined,
+  CheckCircleOutlined, InboxOutlined, PictureOutlined, DeleteOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -52,6 +52,9 @@ const NewCampaign: React.FC = () => {
   const [reportColor, setReportColor] = useState('#1890ff');
   const [charCount, setCharCount] = useState(0);
   const [smsUnits, setSmsUnits] = useState(1);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
   const messageRef = useRef<string>('');
 
   useEffect(() => {
@@ -101,6 +104,32 @@ const NewCampaign: React.FC = () => {
     setNewListName('');
   };
 
+  const handleImageUpload = async (file: File) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Only JPG, PNG, WEBP, or GIF images are allowed');
+      return false;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image must be under 10 MB');
+      return false;
+    }
+    setImageUploading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const resp = await api.post('/campaigns/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      } as object);
+      setImageUrl(resp.data.url);
+      setImagePreview(URL.createObjectURL(file));
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } } };
+      setError(err.response?.data?.error || 'Image upload failed');
+    } finally { setImageUploading(false); }
+    return false;
+  };
+
   const handleFileUpload = async (file: File) => {
     const listId = createdListId || form.getFieldValue('contact_list_id');
     if (!listId) { setError('Please create or select a contact list first'); return false; }
@@ -145,6 +174,7 @@ const NewCampaign: React.FC = () => {
         sender_id: useCustomSender ? values.sender_id : undefined,
         template_id: values.template_id || undefined,
         template_variables: values.template_variables || {},
+        image_url: imageUrl || undefined,
         report_color: reportColor,
         scheduled_at: isScheduled && values.scheduled_at ? values.scheduled_at.toISOString() : undefined,
       };
@@ -305,10 +335,73 @@ const NewCampaign: React.FC = () => {
               </Form.Item>
             )}
 
-            <Form.Item label="Message" name="message" rules={[{ required: true, message: 'Message is required' }]}>
+            {(channel === 'whatsapp' || channel === 'both') && (
+              <Form.Item
+                label={
+                  <span>
+                    <PictureOutlined style={{ marginRight: 6, color: '#52c41a' }} />
+                    Image / Poster <span style={{ fontWeight: 400, color: '#8c8c8c', fontSize: 12 }}>(optional — sent as WhatsApp image with your message as caption)</span>
+                  </span>
+                }
+              >
+                {imagePreview ? (
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                    <img
+                      src={imagePreview}
+                      alt="Campaign poster"
+                      style={{ maxWidth: 200, maxHeight: 200, objectFit: 'cover', borderRadius: 8, border: '1px solid #f0f0f0' }}
+                    />
+                    <div>
+                      <div style={{ color: '#52c41a', fontWeight: 600, marginBottom: 8 }}>
+                        <CheckCircleOutlined /> Image uploaded
+                      </div>
+                      <Button
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => { setImageUrl(''); setImagePreview(''); }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Dragger
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    beforeUpload={handleImageUpload}
+                    showUploadList={false}
+                    disabled={imageUploading}
+                    style={{ padding: '8px 0' }}
+                  >
+                    {imageUploading ? (
+                      <div style={{ padding: '16px 0' }}>
+                        <Spin />
+                        <div style={{ marginTop: 8, color: '#8c8c8c' }}>Uploading…</div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="ant-upload-drag-icon" style={{ margin: '8px 0' }}>
+                          <PictureOutlined style={{ fontSize: 32, color: '#52c41a' }} />
+                        </p>
+                        <p className="ant-upload-text" style={{ margin: '4px 0' }}>Click or drag image here</p>
+                        <p className="ant-upload-hint" style={{ margin: 0, fontSize: 12 }}>
+                          JPG, PNG, WEBP or GIF · Max 10 MB · Min 500×500 px recommended
+                        </p>
+                      </>
+                    )}
+                  </Dragger>
+                )}
+              </Form.Item>
+            )}
+
+            <Form.Item
+              label={imageUrl && (channel === 'whatsapp' || channel === 'both') ? 'Caption (appears below the image)' : 'Message'}
+              name="message"
+              rules={[{ required: true, message: 'Message is required' }]}
+            >
               <TextArea
                 rows={5}
-                placeholder="Type your message here..."
+                placeholder={imageUrl ? 'Caption text shown below the image on WhatsApp...' : 'Type your message here...'}
                 showCount
                 maxLength={1600}
                 onChange={e => handleMessageChange(e.target.value)}
@@ -403,6 +496,21 @@ const NewCampaign: React.FC = () => {
                 <Col span={12}><Text type="secondary">Contacts:</Text> <strong>{selectedList?.valid_contacts}</strong></Col>
                 {useCustomSender && <Col span={12}><Text type="secondary">Custom Sender ID:</Text> <strong>{form.getFieldValue('sender_id')}</strong></Col>}
                 {isScheduled && <Col span={12}><Text type="secondary">Scheduled:</Text> <strong>{form.getFieldValue('scheduled_at')?.format('DD MMM YYYY HH:mm')}</strong></Col>}
+                {imagePreview && (
+                  <Col span={24} style={{ marginTop: 8 }}>
+                    <Text type="secondary">Image/Poster:</Text>
+                    <div style={{ marginTop: 6 }}>
+                      <img
+                        src={imagePreview}
+                        alt="Campaign poster"
+                        style={{ maxWidth: 140, maxHeight: 140, objectFit: 'cover', borderRadius: 6, border: '1px solid #d9d9d9' }}
+                      />
+                      <div style={{ fontSize: 11, color: '#52c41a', marginTop: 4 }}>
+                        <CheckCircleOutlined /> Will be sent as WhatsApp image with caption
+                      </div>
+                    </div>
+                  </Col>
+                )}
               </Row>
             </Card>
 

@@ -1,6 +1,9 @@
+import os
+import uuid
 from datetime import datetime
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from werkzeug.utils import secure_filename
 from ..extensions import db
 from ..models.campaign import Campaign
 from ..models.contact import ContactList, Contact, Blacklist
@@ -9,6 +12,45 @@ from ..models.notification import Notification
 from ..utils.decorators import verified_required
 
 campaigns_bp = Blueprint("campaigns", __name__)
+
+
+def _allowed_image(filename: str) -> bool:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    return ext in current_app.config.get("ALLOWED_IMAGE_EXTENSIONS", {"jpg", "jpeg", "png", "webp", "gif"})
+
+
+@campaigns_bp.route("/upload-image", methods=["POST"])
+@verified_required
+def upload_campaign_image():
+    """Upload an image/poster for a WhatsApp campaign. Returns a public URL."""
+    if "image" not in request.files:
+        return jsonify({"error": "No image file provided"}), 400
+
+    file = request.files["image"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+    if not _allowed_image(file.filename):
+        return jsonify({"error": "File type not allowed. Use JPG, PNG, WEBP, or GIF."}), 400
+
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    os.makedirs(upload_folder, exist_ok=True)
+
+    ext = file.filename.rsplit(".", 1)[-1].lower()
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    filepath = os.path.join(upload_folder, filename)
+    file.save(filepath)
+
+    base_url = current_app.config.get("APP_BASE_URL", "http://localhost:5000")
+    public_url = f"{base_url}/api/uploads/{filename}"
+
+    return jsonify({"url": public_url, "filename": filename})
+
+
+@campaigns_bp.route("/uploads/<filename>", methods=["GET"])
+def serve_upload(filename):
+    """Serve an uploaded campaign image publicly (WhatsApp fetches it from this URL)."""
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    return send_from_directory(upload_folder, secure_filename(filename))
 
 
 def _calculate_campaign_cost(channel, contact_count, use_custom_sender, config):
@@ -97,6 +139,7 @@ def create_campaign():
         use_custom_sender_id=use_custom_sender,
         template_id=data.get("template_id"),
         template_variables=data.get("template_variables", {}),
+        image_url=data.get("image_url") or None,
         scheduled_at=scheduled_at,
         is_scheduled=is_scheduled,
         status=Campaign.STATUS_DRAFT,

@@ -158,6 +158,12 @@ def _send_whatsapp_batch(campaign_id: str, contact_ids: list):
                 language=campaign.template.language,
                 components=components,
             )
+        elif campaign.image_url:
+            result = wa_service.send_image_message(
+                phone=contact.phone,
+                image_url=campaign.image_url,
+                caption=campaign.message,
+            )
         else:
             result = wa_service.send_text_message(
                 phone=contact.phone,

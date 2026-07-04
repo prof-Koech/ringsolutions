@@ -58,6 +58,32 @@ class WhatsAppService:
             logger.error(f"WhatsApp send error: {e}")
             return {"success": False, "error": str(e)}
 
+    def send_image_message(self, phone: str, image_url: str, caption: str = "") -> dict:
+        """Send an image (poster) with an optional caption via WhatsApp."""
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": self._normalize_phone(phone),
+            "type": "image",
+            "image": {
+                "link": image_url,
+                "caption": caption[:1024] if caption else "",
+            },
+        }
+        try:
+            resp = requests.post(self.api_url, json=payload, headers=self.headers, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            messages = data.get("messages", [])
+            message_id = messages[0]["id"] if messages else None
+            return {"success": True, "message_id": message_id, "raw": data}
+        except requests.exceptions.HTTPError as e:
+            error_data = e.response.json() if e.response else {}
+            logger.error(f"WhatsApp image send error to {phone}: {error_data}")
+            return {"success": False, "error": str(e), "details": error_data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     def send_text_message(self, phone: str, text: str) -> dict:
         """Send a plain text WhatsApp message (within 24h window)."""
         payload = {
