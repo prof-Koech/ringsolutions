@@ -186,27 +186,25 @@ def send_campaign_report_email(user_email: str, name: str, campaign, pdf_bytes: 
     except Exception as e:
         logger.error(f"Failed to send campaign report email: {e}")
         return False
-
-
-  def send_subscription_email(user_email: str, name: str, frontend_url: str = ''):
+def send_subscription_email(user_email: str, name: str, frontend_url: str = ''):
     """Send a simple subscription confirmation email. Best-effort only."""
     try:
-      if not _mail_configured():
-        logger.info(f"[DEV] Subscription confirmation for {user_email}")
-        return True
+        if not _mail_configured():
+            logger.info(f"[DEV] Subscription confirmation for {user_email}")
+            return True
 
-      confirm_url = frontend_url or current_app.config.get('FRONTEND_URL', '')
-      html = f"""
-      <div style='font-family: Arial, sans-serif; padding: 20px;'>
-        <h2>Thanks for subscribing</h2>
-        <p>Hi {name},</p>
-        <p>Thanks for subscribing to RingSolutions updates. We'll send product news and release notes to {user_email}.</p>
-        <p style='font-size:13px;color:#888;'>If you didn't sign up, ignore this email.</p>
-      </div>
-      """
-      msg = MailMessage(subject="Thanks for subscribing to RingSolutions", recipients=[user_email], html=html)
-      mail.send(msg)
-      return True
+        confirm_url = frontend_url or current_app.config.get('FRONTEND_URL', '')
+        html = f"""
+        <div style='font-family: Arial, sans-serif; padding: 20px;'>
+          <h2>Thanks for subscribing</h2>
+          <p>Hi {name},</p>
+          <p>Thanks for subscribing to RingSolutions updates. We'll send product news and release notes to {user_email}.</p>
+          <p style='font-size:13px;color:#888;'>If you didn't sign up, ignore this email.</p>
+        </div>
+        """
+        msg = MailMessage(subject="Thanks for subscribing to RingSolutions", recipients=[user_email], html=html)
+        mail.send(msg)
+        return True
     except Exception as e:
-      logger.error(f"Failed to send subscription email to {user_email}: {e}")
-      return False
+        logger.error(f"Failed to send subscription email to {user_email}: {e}")
+        return False
