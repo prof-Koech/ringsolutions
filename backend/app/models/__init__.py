@@ -6,9 +6,11 @@ from .message import Message
 from .template import WhatsAppTemplate
 from .notification import Notification
 from .sender_id import SenderID
+from .subscriber import Subscriber
 
 __all__ = [
     "User", "Wallet", "Transaction", "Campaign",
     "ContactList", "Contact", "Blacklist",
     "Message", "WhatsAppTemplate", "Notification", "SenderID",
+    "Subscriber",
 ]

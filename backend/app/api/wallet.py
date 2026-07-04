@@ -110,15 +110,54 @@ def check_topup_status(transaction_id):
     if not transaction:
         return jsonify({"error": "Transaction not found"}), 404
 
+    # If still pending and callback hasn't arrived yet, query Safaricom directly
+    # and resolve the transaction — important for sandbox where callbacks may not fire
     if transaction.status == Transaction.PENDING and transaction.mpesa_checkout_request_id:
         try:
             result = mpesa_service.query_stk_status(transaction.mpesa_checkout_request_id)
-            if result.get("ResultCode") == "0":
-                pass  # Callback will handle the actual update
+            result_code = str(result.get("ResultCode", ""))
+            if result_code == "0":
+                amount = float(transaction.amount)
+                balance_before = float(wallet.balance)
+                wallet.balance = balance_before + amount
+                transaction.status = Transaction.COMPLETED
+                transaction.balance_before = balance_before
+                transaction.balance_after = float(wallet.balance)
+                from datetime import datetime as _dt
+                transaction.completed_at = _dt.utcnow()
+                db.session.commit()
+            elif result_code not in ("", "1032"):
+                # 1032 = request cancelled by user; other non-zero = failure
+                transaction.status = Transaction.FAILED
+                transaction.failure_reason = result.get("ResultDesc", "Payment failed")
+                db.session.commit()
         except Exception:
-            pass
+            pass  # Network error — let polling retry
 
     return jsonify({"transaction": transaction.to_dict()})
+
+
+@wallet_bp.route("/topup/cancel/<transaction_id>", methods=["POST"])
+@jwt_required()
+def cancel_topup(transaction_id):
+    user_id = get_jwt_identity()
+    wallet = Wallet.query.filter_by(user_id=user_id).first()
+
+    transaction = Transaction.query.filter_by(
+        id=transaction_id, wallet_id=wallet.id
+    ).first()
+
+    if not transaction:
+        return jsonify({"error": "Transaction not found"}), 404
+
+    if transaction.status != Transaction.PENDING:
+        return jsonify({"error": "Only pending transactions can be cancelled"}), 400
+
+    transaction.status = Transaction.CANCELLED
+    transaction.failure_reason = "Cancelled by user"
+    db.session.commit()
+
+    return jsonify({"message": "Transaction cancelled"})
 
 
 @wallet_bp.route("/pricing", methods=["GET"])

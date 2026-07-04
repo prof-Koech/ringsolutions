@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button, Row, Col, Card, Space, Tag, Divider } from 'antd';
+import React, { useState } from 'react';
+import { Button, Row, Col, Card, Space, Divider, Modal, Form, Input, message } from 'antd';
 import {
   MessageOutlined, WhatsAppOutlined, ThunderboltOutlined,
   SafetyCertificateOutlined, BarChartOutlined, MobileOutlined,
@@ -7,6 +7,8 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/common/Logo';
+import CountUp from '../components/common/CountUp';
+import api from '../services/api';
 
 const FEATURES = [
   {
@@ -49,6 +51,20 @@ const PRICING = [
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const [form] = Form.useForm();
+
+  const submitSubscribe = async (values: { email: string; name?: string }) => {
+    try {
+      await api.post('/subscribe', { email: values.email, name: values.name });
+      message.success('Subscribed — we will keep you posted');
+      setSubscribeOpen(false);
+      form.resetFields();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } } };
+      message.error(err.response?.data?.error || 'Subscription failed');
+    }
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff' }}>
@@ -97,9 +113,7 @@ const Landing: React.FC = () => {
           ))}
         </div>
         <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
-          <Tag color="blue" style={{ marginBottom: 20, fontSize: 13, padding: '4px 16px' }}>
-            🌍 Built for Africa
-          </Tag>
+          {/* Removed "Built for Africa" badge per request. */}
           <h1 style={{
             color: '#fff',
             fontSize: 'clamp(32px, 5vw, 64px)',
@@ -137,17 +151,22 @@ const Landing: React.FC = () => {
             >
               Sign In
             </Button>
+            <Button size="large" onClick={() => setSubscribeOpen(true)} style={{ height: 52 }}>
+              Subscribe
+            </Button>
           </Space>
           <div style={{ marginTop: 40, display: 'flex', gap: 40, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
-              { label: '10M+', sub: 'Messages Sent' },
-              { label: '99.5%', sub: 'Uptime SLA' },
-              { label: '< 3s', sub: 'Average Delivery' },
-              { label: 'KES 0.80', sub: 'SMS Rate' },
+              { end: 10000000, label: 'Messages Sent', format: (n: number) => `${Math.round(n / 1000000)}M+` },
+              { end: 99.5, label: 'Uptime SLA', decimals: 1, format: (n: number) => `${n.toFixed(1)}%` },
+              { end: 3, label: 'Average Delivery', prefix: '<', suffix: 's', format: (n: number) => `< ${n.toFixed(0)}s` },
+              { end: 0.8, label: 'SMS Rate', decimals: 2, format: (n: number) => `KES ${n.toFixed(2)}` },
             ].map(stat => (
               <div key={stat.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#40a9ff' }}>{stat.label}</div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{stat.sub}</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#40a9ff' }}>
+                  <CountUp end={stat.end} duration={900} decimals={stat.decimals || 0} formatter={stat.format} />
+                </div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{stat.label}</div>
               </div>
             ))}
           </div>
@@ -284,6 +303,22 @@ const Landing: React.FC = () => {
         <Divider style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '16px 0' }} />
         <p style={{ margin: 0 }}>© {new Date().getFullYear()} RingSolutions | support@ringsolutions.com | ringsolutions.com</p>
       </footer>
+      <Modal
+        title="Subscribe for updates"
+        open={subscribeOpen}
+        onCancel={() => setSubscribeOpen(false)}
+        okText="Subscribe"
+        onOk={() => form.submit()}
+      >
+        <Form form={form} layout="vertical" onFinish={submitSubscribe}>
+          <Form.Item name="name" label="Name">
+            <Input placeholder="Optional name" />
+          </Form.Item>
+          <Form.Item name="email" label="Email" rules={[{ required: true, message: 'Email required' }, { type: 'email', message: 'Enter a valid email' }] }>
+            <Input placeholder="you@company.com" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

@@ -44,6 +44,7 @@ def create_app(config_class=None):
     from .api.reports import reports_bp
     from .api.admin import admin_bp
     from .api.notifications import notifications_bp
+    from .api.subscribe import subscribe_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(campaigns_bp, url_prefix="/api/campaigns")
@@ -54,6 +55,7 @@ def create_app(config_class=None):
     app.register_blueprint(reports_bp, url_prefix="/api/reports")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
+    app.register_blueprint(subscribe_bp, url_prefix="/api/subscribe")
 
     # JWT error handlers
     @jwt.expired_token_loader
